@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CaliSafety</title>
+    <link rel="stylesheet" href="styles.css">
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC8ENvg9iUPWyM7O5i5AvT8VN7SN38Lyfo&callback=initMap">
+    </script>
+</head>
+<body>
+
+<header id="header">
+    <script type="text/javascript" src="NavBar.js"></script>
+</header>
+
+<main class="page">
+    <section class="search-section">
+        <h2>Search California County</h2>
+        <form id="searchForm">
+            <input id="searchInput" placeholder="e.g. Los Angeles" type="text">
+            <select id="searchParam">
+                <option value="all">All alerts</option>
+                <option value="weather">Weather</option>
+                <option value="fire">Fire</option>
+                <option value="earthquake">Earthquake</option>
+            </select>
+            <button type="submit">Search</button>
+        </form>
+    </section>
+
+    <button id="detect" onclick="locateUser()">&#x1F4CD; Detect My Location</button>
+
+    <div id="map"></div>
+    <div id="results"></div>
+</main>
+
+<footer>
+    <p><a href="https://www.oag.ca.gov/privacy/ccpa" target="_blank">California Consumer Privacy Act (CCPA)</a></p>
+</footer>
+
+<script>
+    let map;
+    let marker;
+    const CA_CENTER = { lat: 37.3382, lng: -121.8863 };
+
+    function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 6,
+            center: CA_CENTER,
+        });
+        marker = new google.maps.Marker({ position: CA_CENTER, map });
+    }
+
+    function locateUser() {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by this browser.');
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
+                map.setCenter(loc);
+                marker.setPosition(loc);
+            },
+            () => alert('Could not detect location.')
+        );
+    }
+
+    function sourceBadge(source) {
+        const cls = source.toLowerCase().replace(/\s+/g, '-');
+        return `<span class="badge badge-${cls}">${source}</span>`;
+    }
+
+    function typeBadge(type) {
+        return `<span class="badge badge-type">${type}</span>`;
+    }
+
+    function sourceClass(source) {
+        return 'source-' + source.toLowerCase().replace(/\s+/g, '-');
+    }
+
+    function renderAlerts(alerts) {
+        if (!alerts || alerts.length === 0) {
+            return '<div class="no-alerts"><p>No active alerts found for this county.</p></div>';
+        }
+        return alerts.map(alert => `
+            <div class="alert-card ${sourceClass(alert.source)}">
+                ${sourceBadge(alert.source)}
+                ${typeBadge(alert.alert_type)}
+                <p>${alert.message}</p>
+                <small>${new Date(alert.created_at).toLocaleString()}</small>
+            </div>
+        `).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('searchForm');
+        const resultsDiv = document.getElementById('results');
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            const searchParam = document.getElementById('searchParam').value;
+
+            if (!searchTerm) {
+                map.setCenter(CA_CENTER);
+                marker.setPosition(CA_CENTER);
+                resultsDiv.innerHTML = '<div class="no-alerts"><p>Enter a county name to search.</p></div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<p style="color:var(--text-muted);padding:1rem 0">Loading&hellip;</p>';
+
+            fetch(`/api/county?searchTerm=${encodeURIComponent(searchTerm)}&searchParam=${searchParam}`)
+                .then(res => {
+                    if (res.status === 404) throw new Error('not_found');
+                    if (!res.ok) throw new Error('server_error');
+                    return res.json();
+                })
+                .then(data => {
+                    const county = data.county_information;
+
+                    const lat = parseFloat(county.latitude);
+                    const lng = parseFloat(county.longitude);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        map.setCenter({ lat, lng });
+                        marker.setPosition({ lat, lng });
+                    }
+
+                    resultsDiv.innerHTML = `
+                        <h2>${county.name} County</h2>
+                        <p class="coords">${lat.toFixed(4)}&deg;N &nbsp; ${Math.abs(lng).toFixed(4)}&deg;W</p>
+                        ${renderAlerts(data.alerts)}
+                    `;
+                })
+                .catch(err => {
+                    if (err.message === 'not_found') {
+                        resultsDiv.innerHTML = '<div class="no-alerts"><p>County not found. Try a California county name.</p></div>';
+                    } else {
+                        resultsDiv.innerHTML = '<div class="no-alerts"><p>Error fetching data. Please try again.</p></div>';
+                    }
+                });
+        });
+    });
+</script>
+
+</body>
+</html>

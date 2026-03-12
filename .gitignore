@@ -1,0 +1,16 @@
+# Node.js dependencies
+/node_modules/*
+/node_modules/
+application/node_modules/
+
+# Secret files — never upload these to GitHub
+application/.env
+application/firebase-key.json
+application/database_config.json
+credentials/
+
+# IDE files
+.idea/
+
+# macOS system files
+.DS_Store

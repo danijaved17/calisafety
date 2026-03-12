@@ -1,0 +1,14 @@
+Alerts, Maps missing
+
+It has to be running in production
+
+P1s have to be implemented!
+
+Data Entry not there
+Filters not working currently
+In-site Messaging
+Alerting
+Maps feature is very important
+Login/Registration functionality missing
+
+Good effort, but a little behind right now
