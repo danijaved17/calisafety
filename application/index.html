@@ -113,22 +113,43 @@
                 const { latitude: lat, longitude: lng } = position.coords;
                 moveMap(lat, lng, 10);
 
-                // Reverse geocode to find county name (Nominatim / OpenStreetMap)
+                btn.textContent = 'Finding your county…';
+
+                // Reverse geocode using Nominatim (OpenStreetMap, free, no API key)
                 try {
                     const res = await fetch(
                         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
                         { headers: { 'Accept-Language': 'en' } }
                     );
                     const data = await res.json();
-                    const rawCounty = data.address?.county || '';
-                    const countyName = rawCounty.replace(/\s*county$/i, '').trim();
+                    const addr = data.address || {};
+
+                    // Nominatim returns different fields depending on the location.
+                    // Try county first, then state_district as fallback.
+                    // Special case: San Francisco returns "City and County of San Francisco"
+                    // so we extract the last word group after "of" if "City and County" is present.
+                    let rawCounty = addr.county || addr.state_district || '';
+                    let countyName = rawCounty
+                        .replace(/city and county of /i, '')
+                        .replace(/\s*county$/i, '')
+                        .trim();
 
                     if (countyName) {
                         document.getElementById('searchInput').value = countyName;
                         runSearch(countyName, document.getElementById('searchParam').value);
+                    } else {
+                        document.getElementById('results').innerHTML = `
+                            <div class="no-alerts">
+                                <div class="no-alerts-icon">&#x1F4CD;</div>
+                                <p>Location detected but county could not be determined. Try searching manually.</p>
+                            </div>`;
                     }
                 } catch {
-                    // Geocoding failed — map still moved, user can search manually
+                    document.getElementById('results').innerHTML = `
+                        <div class="no-alerts">
+                            <div class="no-alerts-icon">&#x26A0;&#xFE0F;</div>
+                            <p>Could not look up your county. Try searching manually.</p>
+                        </div>`;
                 }
 
                 btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg> Detect My Location`;
