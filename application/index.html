@@ -123,12 +123,16 @@
                     );
                     const data = await res.json();
                     const addr = data.address || {};
+                    console.log('[CaliSafety] Nominatim address fields:', addr);
 
-                    // Nominatim returns different fields depending on the location.
-                    // Try county first, then state_district as fallback.
-                    // Special case: San Francisco returns "City and County of San Francisco"
-                    // so we extract the last word group after "of" if "City and County" is present.
-                    let rawCounty = addr.county || addr.state_district || '';
+                    // Nominatim uses different field names depending on location type.
+                    // Try all known fields that might carry the county name.
+                    let rawCounty = addr.county
+                        || addr.state_district
+                        || addr.municipality
+                        || addr.city_district
+                        || addr.city
+                        || '';
                     let countyName = rawCounty
                         .replace(/city and county of /i, '')
                         .replace(/\s*county$/i, '')
