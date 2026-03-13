@@ -3,7 +3,7 @@ const header = document.getElementById('header');
 const outerNav = document.createElement('nav');
 
 const navTitle = document.createElement('h1');
-navTitle.textContent = 'CaliSafety';
+navTitle.innerHTML = 'Cali<span>Safety</span>';
 outerNav.appendChild(navTitle);
 
 const navLinks = document.createElement('nav');
